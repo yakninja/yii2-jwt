@@ -172,6 +172,7 @@ class Jwt extends Component
         /** @var Signer $signer */
         $signer = Yii::createObject($this->supportedAlgs[$alg]);
 
-        return $token->verify($signer, $this->key);
+        // assuming the string key here
+        return $token->verify($signer, Key\InMemory::plainText($this->key));
     }
 }
