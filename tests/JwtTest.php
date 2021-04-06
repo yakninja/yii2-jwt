@@ -2,6 +2,8 @@
 
 namespace sizeg\jwt\tests;
 
+use Lcobucci\JWT\Signer\Key\InMemory;
+
 class JwtTest extends TestCase
 {
 
@@ -9,17 +11,17 @@ class JwtTest extends TestCase
      * Secret key
      */
     const SECRET = 'secret';
-    
+
     /**
      * Issuer
      */
     const ISSUER = 'http://example.com';
-    
+
     /**
      * Audience
      */
     const AUDIENCE = 'http://example.org';
-    
+
     /**
      * Id
      */
@@ -53,16 +55,18 @@ class JwtTest extends TestCase
      */
     public function createTokenWithSignature()
     {
+        $now = new \DateTimeImmutable();
+        $expire = new \DateTimeImmutable('now + 3600 seconds');
         return $this->jwt->getBuilder()->setIssuer(self::ISSUER) // Configures the issuer (iss claim)
                 ->setAudience(self::AUDIENCE) // Configures the audience (aud claim)
-                ->setId(self::ID, true) // Configures the id (jti claim), replicating as a header item
-                ->setIssuedAt(time()) // Configures the time that the token was issue (iat claim)
-                ->setExpiration(time() + 3600) // Configures the expiration time of the token (nbf claim)
+                ->setId(self::ID) // Configures the id (jti claim)
+                ->setIssuedAt($now) // Configures the time that the token was issue (iat claim)
+                ->setExpiration($expire) // Configures the expiration time of the token (nbf claim)
                 ->set('uid', 1) // Configures a new claim, called "uid"
-                ->sign($this->getSignerSha256(), $this->jwt->key) // creates a signature using "testing" as key
-                ->getToken(); // Retrieves the generated token
+                // creates a signature using "testing" as key
+                ->getToken($this->getSignerSha256(), InMemory::plainText($this->jwt->key)); // Retrieves the generated token
     }
-    
+
     /**
      * @return ValidationData
      */
@@ -82,11 +86,11 @@ class JwtTest extends TestCase
     {
         $token = $this->createTokenWithSignature();
         $data = $this->getValidationData();
-        $is_verify = $token->verify($this->getSignerSha256(), $this->jwt->key);
+        $is_verify = $token->verify($this->getSignerSha256(), InMemory::plainText($this->jwt->key));
         $is_valid = $token->validate($data); // true, because validation information is equals to data contained on the token
         $this->assertTrue($is_verify && $is_valid);
     }
-    
+
     /**
      * Validate token timeout with signature
      */
@@ -95,7 +99,7 @@ class JwtTest extends TestCase
         $token = $this->createTokenWithSignature();
         $data = $this->getValidationData();
         $data->setCurrentTime(time() + 4000); // changing the validation time to future
-        $is_verify = $token->verify($this->getSignerSha256(), $this->jwt->key);
+        $is_verify = $token->verify($this->getSignerSha256(), InMemory::plainText($this->jwt->key));
         $is_valid = $token->validate($data); // false, because token is expired since current time is greater than exp
         $this->assertFalse($is_verify && $is_valid);
     }
